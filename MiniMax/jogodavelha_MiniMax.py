@@ -23,43 +23,64 @@ def is_winner(board, player):
 def is_board_full(board):
     return all(all(cell != ' ' for cell in row) for row in board)
 
-def evaluate_board(board):
-    def score_line(line):
-        score = 0
-        if line.count('O') == 2 and line.count(' ') == 1:
-            score += 10
-        if line.count('X') == 2 and line.count(' ') == 1:
-            score -= 10
-        return score
+def minimax(board, depth, is_maximizing, generation_count):
+    generation_count[0] += 1 
 
-    score = 0
-    for i in range(3):
-        score += score_line([board[i][j] for j in range(3)]) 
-        score += score_line([board[j][i] for j in range(3)]) 
+    if is_winner(board, 'O'):
+        return 1, generation_count
+    if is_winner(board, 'X'):
+        return -1, generation_count
+    if is_board_full(board):
+        return 0, generation_count
 
-    score += score_line([board[i][i] for i in range(3)])
-    score += score_line([board[i][2 - i] for i in range(3)])
+    if is_maximizing:
+        best_score = float('-inf')
+        for i in range(3):
+            for j in range(3):
+                if board[i][j] == ' ':
+                    board[i][j] = 'O'
+                    score, _ = minimax(board, depth + 1, False, generation_count)
+                    board[i][j] = ' '
+                    best_score = max(score, best_score)
+        return best_score, generation_count
+    else:
+        best_score = float('inf')
+        for i in range(3):
+            for j in range(3):
+                if board[i][j] == ' ':
+                    board[i][j] = 'X'
+                    score, _ = minimax(board, depth + 1, True, generation_count)
+                    board[i][j] = ' '
+                    best_score = min(score, best_score)
+        return best_score, generation_count
 
-    return score
-
-def hill_climbing_best_move(board, iteration_count):
+def best_move(board):
     best_score = float('-inf')
-    move = None
+    possible_moves = []
+    generation_count = [0]
+
+    start_time = time.time()
 
     for i in range(3):
         for j in range(3):
             if board[i][j] == ' ':
                 board[i][j] = 'O'
-                score = evaluate_board(board)
-                iteration_count[0] += 1
+                score, _ = minimax(board, 0, False, generation_count)
                 board[i][j] = ' '
                 if score > best_score:
                     best_score = score
-                    move = (i, j)
+                    possible_moves = [(i, j)]
+                elif score == best_score:
+                    possible_moves.append((i, j))
 
-    return move if move is not None else (0, 0)
+    end_time = time.time() 
 
-def main_hill_climbing():
+    execution_time = end_time - start_time
+
+    move = random.choice(possible_moves) if possible_moves else (0, 0)
+    return move, execution_time, generation_count[0]
+
+def main():
     board = init_board()
     game_mode = input("Escolha o modo de jogo (1: Jogador X IA, 2 IA X IA): ")
 
@@ -81,16 +102,12 @@ def main_hill_climbing():
                 current_player = 'O'
         else:
             print(f"Turno da IA ({current_player})")
-            start_time = time.time()
-            iteration_count = [0]
-            move = hill_climbing_best_move(board, iteration_count)
-            end_time = time.time()
-            execution_time = end_time - start_time
-            print(f"IA ({current_player}) demorou {execution_time:.4f} segundos e {iteration_count[0]} gerações para decidir.")
+            move, execution_time, generations = best_move(board)
+            print(f"IA ({current_player}) demorou {execution_time:.4f} segundos e {generations} gerações para decidir.")
             board[move[0]][move[1]] = current_player
             if is_winner(board, current_player):
                 print_board(board)
-                print(f"{current_player} (IA) ganhou!")
+                print(f"{current_player} (IA) venceu!")
                 break
             current_player = 'X' if current_player == 'O' else 'O'
         
@@ -99,4 +116,4 @@ def main_hill_climbing():
             print("Empate!")
             break
 
-main_hill_climbing()
+main()
